@@ -1,0 +1,98 @@
+{
+  "log": { "loglevel": "warning" },
+  "inbounds": [
+    {
+      "tag": "transparent",
+      "listen": "0.0.0.0",
+      "port": 12345,
+      "protocol": "dokodemo-door",
+      "settings": { "network": "tcp,udp", "followRedirect": true },
+      "streamSettings": { "sockopt": { "tproxy": "tproxy" } },
+      "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"], "routeOnly": true }
+    },
+    {
+      "tag": "dns-in",
+      "listen": "0.0.0.0",
+      "port": 5353,
+      "protocol": "dokodemo-door",
+      "settings": { "address": "8.8.8.8", "port": 53, "network": "tcp,udp" },
+      "streamSettings": { "sockopt": { "tproxy": "tproxy" } }
+    }
+  ],
+  "outbounds": [
+__PROXY_OUTBOUND__
+    { "tag": "direct", "protocol": "freedom", "settings": { "domainStrategy": "UseIP" } },
+    { "tag": "block", "protocol": "blackhole" }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      { "type": "field", "inboundTag": ["dns-in"], "outboundTag": "proxy" },
+      { "type": "field", "outboundTag": "proxy", "port": "9339" },
+      {
+        "type": "field",
+        "outboundTag": "proxy",
+        "domain": [
+          "geosite:telegram",
+          "geosite:youtube",
+          "geosite:google",
+          "geosite:instagram",
+          "geosite:facebook",
+          "geosite:discord",
+          "geosite:openai",
+          "domain:claude.ai",
+          "domain:anthropic.com",
+          "domain:claudeusercontent.com",
+          "domain:2ip.ru",
+          "domain:2ip.io",
+          "domain:speedtest.net",
+          "domain:ooklaserver.net",
+          "domain:whatsapp.com",
+          "domain:whatsapp.net",
+          "domain:supercell.com",
+          "domain:supercellid.com",
+          "domain:clashroyale.com",
+          "domain:clashofclans.com",
+          "domain:roblox.com",
+          "domain:rbxcdn.com",
+          "domain:tiktok.com",
+          "domain:tiktokv.com",
+          "domain:tiktokcdn.com",
+          "domain:tiktokcdn-us.com",
+          "domain:tiktokrow-cdn.com",
+          "domain:ttwstatic.com",
+          "domain:byteoversea.com",
+          "domain:ibyteimg.com",
+          "domain:ibytedtos.com",
+          "domain:musical.ly"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "proxy",
+        "ip": [
+          "geoip:telegram",
+          "geoip:facebook",
+          "160.79.104.0/23",
+          "162.159.128.0/19",
+          "66.22.192.0/18",
+          "128.116.0.0/17",
+          "103.140.28.0/23",
+          "141.193.3.0/24",
+          "205.201.62.0/24",
+          "5.180.72.0/22",
+          "34.220.157.0/24",
+          "101.45.192.0/22",
+          "101.45.198.0/24",
+          "101.45.200.0/23",
+          "101.45.248.0/22",
+          "103.136.220.0/22",
+          "71.18.247.0/24",
+          "71.18.248.0/21"
+        ]
+      },
+      { "type": "field", "outboundTag": "proxy", "network": "udp", "ip": ["104.29.0.0/16"] },
+      { "type": "field", "outboundTag": "direct", "network": "tcp,udp" }
+    ]
+  }
+}

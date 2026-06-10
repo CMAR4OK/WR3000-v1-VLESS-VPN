@@ -1,0 +1,15 @@
+# local GUI settings (may contain router IP / password / host key)
+tools/vpn_manager_settings.json
+vpn_manager_settings.json
+
+# full geo bases used to regenerate the minimal ones
+*-full.dat
+geoip-full.dat
+geosite-full.dat
+
+# misc
+*.zip
+*.tar.gz
+__pycache__/
+*.pyc
+.DS_Store

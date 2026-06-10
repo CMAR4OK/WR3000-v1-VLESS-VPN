@@ -1,0 +1,8 @@
+# Keep LF line endings everywhere (shell scripts must be LF to run on the router).
+* text=auto eol=lf
+
+# Binary assets — never touch line endings.
+*.dat binary
+*.zip binary
+*.gz  binary
+*.png binary

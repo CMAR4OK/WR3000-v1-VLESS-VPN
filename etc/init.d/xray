@@ -1,0 +1,151 @@
+#!/bin/sh /etc/rc.common
+# Transparent VLESS proxy for OpenWrt routers (TPROXY mode, TCP + UDP).
+# The Xray binary is large and lives in RAM (/tmp); it is downloaded from the
+# official Xray-core GitHub release at every boot. Config + geo live in /etc/xray.
+#
+# Part of: https://github.com/CMAR4OK/WR3000-v1-VLESS-VPN-Readdy-RU-
+
+START=99
+STOP=10
+USE_PROCD=1
+
+# ---- tunables (override in /etc/xray/xray.conf if present) ----
+XRAY_VERSION="v26.3.27"
+XRAY_ARCH="linux-arm64-v8a"     # arm64 (MT7981/filogic). Others: linux-32, linux-64, mips32le, ...
+XRAY_SHA256=""                  # optional: pin the unzipped binary's sha256 (empty = skip check)
+[ -f /etc/xray/xray.conf ] && . /etc/xray/xray.conf
+
+XRAY_BIN=/tmp/xray
+XRAY_ZIP=/tmp/xray.zip
+XRAY_URL="https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-${XRAY_ARCH}.zip"
+ASSET_DIR=/etc/xray
+CONF=/etc/xray/config.json
+TP_PORT=12345
+DNS_PORT=5353
+MARK=1
+RT_TABLE=100
+LAN_IF="br-lan"
+
+download_xray() {
+    if [ -x "$XRAY_BIN" ]; then
+        [ -z "$XRAY_SHA256" ] && return 0
+        [ "$(sha256sum "$XRAY_BIN" 2>/dev/null | awk '{print $1}')" = "$XRAY_SHA256" ] && return 0
+    fi
+    local i=0
+    while [ $i -lt 60 ]; do
+        rm -f "$XRAY_ZIP" "$XRAY_BIN"
+        if wget -q -O "$XRAY_ZIP" "$XRAY_URL"; then
+            if unzip -o -p "$XRAY_ZIP" xray > "$XRAY_BIN" 2>/dev/null && [ -s "$XRAY_BIN" ]; then
+                chmod 0755 "$XRAY_BIN"
+                rm -f "$XRAY_ZIP"
+                if [ -n "$XRAY_SHA256" ] && [ "$(sha256sum "$XRAY_BIN" | awk '{print $1}')" != "$XRAY_SHA256" ]; then
+                    logger -t xray "sha256 mismatch, retrying"
+                    rm -f "$XRAY_BIN"
+                else
+                    logger -t xray "binary downloaded ($XRAY_VERSION $XRAY_ARCH)"
+                    return 0
+                fi
+            fi
+        fi
+        i=$((i + 1))
+        logger -t xray "download attempt $i failed; retry in 5s"
+        sleep 5
+    done
+    rm -f "$XRAY_ZIP" "$XRAY_BIN"
+    return 1
+}
+
+apply_firewall() {
+    remove_firewall
+    modprobe nft_tproxy 2>/dev/null
+    modprobe nft_socket 2>/dev/null
+    ip rule add fwmark $MARK lookup $RT_TABLE 2>/dev/null
+    ip route add local default dev lo table $RT_TABLE 2>/dev/null
+
+    nft -f - <<EOF
+table inet xray {
+    set skip4 {
+        type ipv4_addr
+        flags interval
+        elements = {
+            0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8,
+            169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16,
+            224.0.0.0/4, 240.0.0.0/4
+        }
+    }
+    chain prerouting {
+        type filter hook prerouting priority mangle; policy accept;
+        iifname != "$LAN_IF" return
+        meta nfproto ipv4 ip daddr @skip4 return
+        # Drop QUIC (UDP/443): apps fall back to TCP, which routes reliably by SNI.
+        # Comment this line out if you want QUIC tunnelled instead.
+        meta nfproto ipv4 meta l4proto udp th dport 443 counter drop
+        meta nfproto ipv4 meta l4proto { tcp, udp } th dport 53 tproxy ip to 127.0.0.1:$DNS_PORT meta mark set $MARK
+        meta nfproto ipv4 meta l4proto { tcp, udp } tproxy ip to 127.0.0.1:$TP_PORT meta mark set $MARK
+    }
+}
+
+table inet xray_fwd {
+    chain forward {
+        type filter hook forward priority filter; policy accept;
+        # Drop IPv6 forwarding from LAN: we only tunnel IPv4, so this prevents
+        # IPv6 leaks. Remove if your setup tunnels IPv6 too.
+        iifname "$LAN_IF" meta nfproto ipv6 counter drop
+    }
+}
+EOF
+}
+
+remove_firewall() {
+    nft delete table inet xray 2>/dev/null
+    nft delete table inet xray_fwd 2>/dev/null
+    ip rule del fwmark $MARK lookup $RT_TABLE 2>/dev/null
+    ip route flush table $RT_TABLE 2>/dev/null
+}
+
+wait_port() {
+    local i=0
+    while [ $i -lt 30 ]; do
+        netstat -ln 2>/dev/null | grep -q ":$TP_PORT " && return 0
+        i=$((i + 1))
+        sleep 1
+    done
+    return 1
+}
+
+start_service() {
+    if ! download_xray; then
+        logger -t xray "FATAL: could not fetch xray; internet stays direct (fail-open)"
+        return 1
+    fi
+
+    procd_open_instance
+    procd_set_param command "$XRAY_BIN" run -config "$CONF"
+    procd_set_param env XRAY_LOCATION_ASSET="$ASSET_DIR"
+    procd_set_param respawn 3600 5 0
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_close_instance
+
+    # procd starts the instance only after start_service returns, so wait for the
+    # listen port and apply the redirect rules from a detached subshell.
+    (
+        if wait_port; then
+            apply_firewall
+            logger -t xray "tproxy firewall applied (TCP+UDP)"
+        else
+            logger -t xray "xray port not up; firewall NOT applied (fail-open)"
+        fi
+    ) &
+}
+
+stop_service() {
+    remove_firewall
+    logger -t xray "stopped; firewall removed"
+}
+
+reload_service() {
+    stop
+    sleep 1
+    start
+}
