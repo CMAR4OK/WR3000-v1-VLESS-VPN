@@ -3,7 +3,7 @@
 # The Xray binary is large and lives in RAM (/tmp); it is downloaded from the
 # official Xray-core GitHub release at every boot. Config + geo live in /etc/xray.
 #
-# Part of: https://github.com/CMAR4OK/WR3000-v1-VLESS-VPN-Readdy-RU-
+# Part of: https://github.com/CMAR4OK/WR3000-v1-VLESS-VPN
 
 START=99
 STOP=10

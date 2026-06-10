@@ -60,9 +60,9 @@ DNS клиентов идёт через туннель (защита от по�
 
 ```sh
 cd /tmp
-wget -O xr.tar.gz https://github.com/CMAR4OK/WR3000-v1-VLESS-VPN-Readdy-RU-/archive/refs/heads/main.tar.gz
+wget -O xr.tar.gz https://github.com/CMAR4OK/WR3000-v1-VLESS-VPN/archive/refs/heads/main.tar.gz
 tar xzf xr.tar.gz
-cd WR3000-v1-VLESS-VPN-Readdy-RU--main
+cd WR3000-v1-VLESS-VPN-main
 
 # запуск установщика (он спросит вашу vless:// ссылку)
 sh install.sh
@@ -227,9 +227,9 @@ On the router (SSH in as `root`):
 
 ```sh
 cd /tmp
-wget -O xr.tar.gz https://github.com/CMAR4OK/WR3000-v1-VLESS-VPN-Readdy-RU-/archive/refs/heads/main.tar.gz
+wget -O xr.tar.gz https://github.com/CMAR4OK/WR3000-v1-VLESS-VPN/archive/refs/heads/main.tar.gz
 tar xzf xr.tar.gz
-cd WR3000-v1-VLESS-VPN-Readdy-RU--main
+cd WR3000-v1-VLESS-VPN-main
 
 # run the installer (it will ask for your vless:// link)
 sh install.sh
