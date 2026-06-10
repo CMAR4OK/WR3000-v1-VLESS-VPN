@@ -151,6 +151,12 @@ sh uninstall.sh
   Если у сервиса фиксированный порт (напр. игры Supercell на 9339), правило
   `{ "outboundTag":"proxy", "port":"9339" }` ловит его независимо от IP.
 
+### Авторы
+
+- **Nazar ([@CMAR4OK](https://github.com/CMAR4OK))** — идея, приобретение и тестирование
+  оборудования и серверов, настройка и отладка на реальном железе.
+- **Claude (Anthropic)** — помощь в написании кода, скриптов и документации.
+
 ### Благодарности
 
 - [XTLS/Xray-core](https://github.com/XTLS/Xray-core) — ядро прокси (MPL-2.0).
@@ -275,6 +281,12 @@ sh uninstall.sh
   to the proxy `ip` rule (find it via `logread -e xray` → `[transparent -> direct]`).
 - This is **not** a DPI-bypass tool. Traffic goes through *your* VLESS server; the server bypasses
   blocks. Fixed-port apps (e.g. Supercell games on 9339) are caught by a `port` rule regardless of IP.
+
+### Authors
+
+- **Nazar ([@CMAR4OK](https://github.com/CMAR4OK))** — idea, bought & tested the hardware and
+  servers, configuration and debugging on real devices.
+- **Claude (Anthropic)** — code, scripts and documentation assistance.
 
 ### Credits / License / Disclaimer
 
