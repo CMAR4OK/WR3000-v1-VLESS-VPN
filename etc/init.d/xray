@@ -13,6 +13,8 @@ USE_PROCD=1
 XRAY_VERSION="v26.3.27"
 XRAY_ARCH="linux-arm64-v8a"     # arm64 (MT7981/filogic). Others: linux-32, linux-64, mips32le, ...
 XRAY_SHA256=""                  # optional: pin the unzipped binary's sha256 (empty = skip check)
+GOMEMLIMIT="128MiB"             # cap Xray's (Go) memory so it can't OOM a low-RAM router
+GOGC="50"                       # GC more aggressively (lower RSS)
 [ -f /etc/xray/xray.conf ] && . /etc/xray/xray.conf
 
 XRAY_BIN=/tmp/xray
@@ -121,7 +123,7 @@ start_service() {
 
     procd_open_instance
     procd_set_param command "$XRAY_BIN" run -config "$CONF"
-    procd_set_param env XRAY_LOCATION_ASSET="$ASSET_DIR"
+    procd_set_param env XRAY_LOCATION_ASSET="$ASSET_DIR" GOMEMLIMIT="$GOMEMLIMIT" GOGC="$GOGC"
     procd_set_param respawn 3600 5 0
     procd_set_param stdout 1
     procd_set_param stderr 1
